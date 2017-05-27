@@ -1,0 +1,15 @@
+---
+# This playbook installs and configures needed packages.
+
+- hosts: all
+  become: true
+  become_method: sudo
+  tasks:
+  - name: Install hostapd package
+    apt:
+      name: hostapd
+      update_cache: yes
+  - name: Install isc-dhcp-server package
+    apt:
+      name: isc-dhcp-server
+      update_cache: yes
