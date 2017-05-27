@@ -5,11 +5,41 @@
   become: true
   become_method: sudo
   tasks:
-  - name: Install hostapd package
-    apt:
-      name: hostapd
-      update_cache: yes
-  - name: Install isc-dhcp-server package
-    apt:
-      name: isc-dhcp-server
-      update_cache: yes
+
+  - name: Install hostapd & isc-dhcp-server package
+    apt: name={{item}} state=installed
+    with_items:
+      - hostapd
+      - isc-dhcp-server
+
+  - name: Comment domain-name in dhcpd.conf
+    replace:
+      dest: /etc/dhcp/dhcpd.conf
+      regexp: '^option domain-name '
+      replace: '#option domain-name '
+
+  - name: Comment domain-name-servers in dhcpd.conf
+    replace:
+      dest: /etc/dhcp/dhcpd.conf
+      regexp: '^option domain-name-servers '
+      replace: '#option domain-name-servers '
+
+  - name: Uncomment authoritative in dhcpd.conf
+    replace:
+      dest: /etc/dhcp/dhcpd.conf
+      regexp: '^#authoritative;'
+      replace: 'authoritative;'
+
+  - name: insert/update "Match User" configuration block in /etc/ssh/sshd_config
+    blockinfile:
+      path: /etc/dhcp/dhcpd.conf
+      block: |
+        subnet 192.168.10.0 netmask 255.255.255.0 {
+          range 192.168.10.10 192.168.10.20;
+          option broadcast-address 192.168.10.255;
+          option routers 192.168.10.1;
+          default-lease-time 600;
+          max-lease-time 7200;
+          option domain-name "local-network";
+          option domain-name-servers 8.8.8.8, 8.8.4.4;
+        }
