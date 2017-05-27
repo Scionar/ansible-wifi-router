@@ -14,23 +14,23 @@
 
   - name: Comment domain-name in dhcpd.conf
     replace:
-      dest: /etc/dhcp/dhcpd.conf
+      path: /etc/dhcp/dhcpd.conf
       regexp: '^option domain-name '
       replace: '#option domain-name '
 
   - name: Comment domain-name-servers in dhcpd.conf
     replace:
-      dest: /etc/dhcp/dhcpd.conf
+      path: /etc/dhcp/dhcpd.conf
       regexp: '^option domain-name-servers '
       replace: '#option domain-name-servers '
 
   - name: Uncomment authoritative in dhcpd.conf
     replace:
-      dest: /etc/dhcp/dhcpd.conf
+      path: /etc/dhcp/dhcpd.conf
       regexp: '^#authoritative;'
       replace: 'authoritative;'
 
-  - name: insert/update "Match User" configuration block in /etc/ssh/sshd_config
+  - name: Insert subnet block into dhcpd.conf
     blockinfile:
       path: /etc/dhcp/dhcpd.conf
       block: |
@@ -43,3 +43,65 @@
           option domain-name "local-network";
           option domain-name-servers 8.8.8.8, 8.8.4.4;
         }
+
+  - name: Set interfaces to isc-dhcp-server configuration
+    lineinfile:
+      path: /etc/default/isc-dhcp-server
+      regexp: '^INTERFACES="*$'
+      line: 'INTERFACES="wlan0"'
+
+  - name: Set used newtwork interface down
+    command: ifconfig wlan0 down
+
+  - name: Set /etc/network/interfaces configuration
+    template:
+      src: templates/interfaces.j2
+      dest: /etc/network/interfaces
+      owner: root
+      group: root
+      mode: 0644
+
+  - name: Set SSID in hostapd.conf
+    replace:
+      path: /etc/hostapd/hostapd.conf
+      regexp: '^ssid=*'
+      replace: 'ssid=Wifii'
+
+  - name: Set WPA passphrase in hostapd.conf
+    replace:
+      path: /etc/hostapd/hostapd.conf
+      regexp: '^wpa_passphrase=*'
+      replace: 'wpa_passphrase=QuarkQuark'
+
+  - name: Set NAT
+    lineinfile:
+      path: /etc/sysctl.conf
+      line: 'net.ipv4.ip_forward=1'
+
+  - name: Start the translation
+    command: sh -c "echo 1 > /proc/sys/net/ipv4/ip_forward"
+
+  - name: Set used newtwork interface up
+    command: ifconfig wlan0 up
+
+  - name: Iptable settings
+    command: iptables {{item}}
+    with_items:
+      - -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+      - -A FORWARD -i eth0 -o wlan0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+      - -A FORWARD -i wlan0 -o eth0 -j ACCEPT
+
+  - name: Set hostapd and isc-dhcp-server to start in boot
+    command: update-rc.d {{item}} enable
+    with_items:
+      - hostapd
+      - isc-dhcp-server
+
+  - name: Backup the NAT configuration
+    command: sh -c "iptables-save > /etc/iptables.ipv4.nat"
+
+  - name: Reboot
+    command: /sbin/shutdown -r +1
+    async: 0
+    poll: 0
+    ignore_errors: true
