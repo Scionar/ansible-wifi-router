@@ -15,19 +15,19 @@
   - name: Comment domain-name in dhcpd.conf
     replace:
       path: /etc/dhcp/dhcpd.conf
-      regexp: '^option domain-name '
+      regexp: '^(option domain-name )'
       replace: '#option domain-name '
 
   - name: Comment domain-name-servers in dhcpd.conf
     replace:
       path: /etc/dhcp/dhcpd.conf
-      regexp: '^option domain-name-servers '
+      regexp: '^(option domain-name-servers )'
       replace: '#option domain-name-servers '
 
   - name: Uncomment authoritative in dhcpd.conf
     replace:
       path: /etc/dhcp/dhcpd.conf
-      regexp: '^#authoritative;'
+      regexp: '^(#authoritative;)'
       replace: 'authoritative;'
 
   - name: Insert subnet block into dhcpd.conf
@@ -46,8 +46,8 @@
 
   - name: Set interfaces to isc-dhcp-server configuration
     lineinfile:
-      path: /etc/default/isc-dhcp-server
-      regexp: '^INTERFACES="*$'
+      dest: /etc/default/isc-dhcp-server
+      regexp: '^(#?INTERFACES=")'
       line: 'INTERFACES="wlan0"'
 
   - name: Set used newtwork interface down
@@ -61,17 +61,19 @@
       group: root
       mode: 0644
 
-  - name: Set SSID in hostapd.conf
-    replace:
-      path: /etc/hostapd/hostapd.conf
-      regexp: '^ssid=*'
-      replace: 'ssid=Wifii'
+  - name: Create hostapd.conf configuration
+    template:
+      src: templates/hostapd.conf.j2
+      dest: /etc/hostapd/hostapd.conf
+      owner: root
+      group: root
+      mode: 0644
 
-  - name: Set WPA passphrase in hostapd.conf
-    replace:
-      path: /etc/hostapd/hostapd.conf
-      regexp: '^wpa_passphrase=*'
-      replace: 'wpa_passphrase=QuarkQuark'
+  - name: Set hostapd to use hostapd.conf configure
+    lineinfile:
+      dest: /etc/default/hostapd
+      regexp: '^(#?DAEMON_CONF=")'
+      line: 'DAEMON_CONF="/etc/hostapd/hostapd.conf"'
 
   - name: Set NAT
     lineinfile:
@@ -104,4 +106,4 @@
     command: /sbin/shutdown -r +1
     async: 0
     poll: 0
-    ignore_errors: true
+    ignore_errors: True
