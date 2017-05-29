@@ -13,22 +13,22 @@
       - isc-dhcp-server
 
   - name: Comment domain-name in dhcpd.conf
-    replace:
-      path: /etc/dhcp/dhcpd.conf
-      regexp: '^(option domain-name )'
-      replace: '#option domain-name '
+    lineinfile:
+      dest: /etc/dhcp/dhcpd.conf
+      regexp: '^(#?option domain-name )'
+      line: '#option domain-name '
 
   - name: Comment domain-name-servers in dhcpd.conf
-    replace:
-      path: /etc/dhcp/dhcpd.conf
-      regexp: '^(option domain-name-servers )'
-      replace: '#option domain-name-servers '
+    lineinfile:
+      dest: /etc/dhcp/dhcpd.conf
+      regexp: '^(#?option domain-name-servers )'
+      line: '#option domain-name-servers '
 
   - name: Uncomment authoritative in dhcpd.conf
-    replace:
-      path: /etc/dhcp/dhcpd.conf
-      regexp: '^(#authoritative;)'
-      replace: 'authoritative;'
+    lineinfile:
+      dest: /etc/dhcp/dhcpd.conf
+      regexp: '^(#?authoritative;)'
+      line: 'authoritative;'
 
   - name: Insert subnet block into dhcpd.conf
     blockinfile:
