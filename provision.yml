@@ -35,8 +35,8 @@
       path: /etc/dhcp/dhcpd.conf
       block: |
         subnet 192.168.10.0 netmask 255.255.255.0 {
-          range 192.168.10.10 192.168.10.20;
-          option broadcast-address 192.168.10.255;
+          range {{subnet_start}} {{subnet_end}};
+          option broadcast-address {{broadcast_address}};
           option routers 192.168.10.1;
           default-lease-time 600;
           max-lease-time 7200;
@@ -48,10 +48,10 @@
     lineinfile:
       dest: /etc/default/isc-dhcp-server
       regexp: '^(#?INTERFACES=")'
-      line: 'INTERFACES="wlan0"'
+      line: 'INTERFACES="{{interface_in}}"'
 
   - name: Set used newtwork interface down
-    command: ifconfig wlan0 down
+    command: ifconfig {{interface_in}} down
 
   - name: Set /etc/network/interfaces configuration
     template:
@@ -76,22 +76,23 @@
       line: 'DAEMON_CONF="/etc/hostapd/hostapd.conf"'
 
   - name: Set NAT
-    lineinfile:
-      path: /etc/sysctl.conf
-      line: 'net.ipv4.ip_forward=1'
+    lineinfile: path=/etc/sysctl.conf line='net.ipv4.ip_forward=1'
+    when: allow_connection
 
   - name: Start the translation
     command: sh -c "echo 1 > /proc/sys/net/ipv4/ip_forward"
+    when: allow_connection
 
   - name: Set used newtwork interface up
-    command: ifconfig wlan0 up
+    command: ifconfig {{interface_in}} up
 
   - name: Iptable settings
     command: iptables {{item}}
     with_items:
-      - -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-      - -A FORWARD -i eth0 -o wlan0 -m state --state RELATED,ESTABLISHED -j ACCEPT
-      - -A FORWARD -i wlan0 -o eth0 -j ACCEPT
+      - -t nat -A POSTROUTING -o {{interface_out}} -j MASQUERADE
+      - -A FORWARD -i {{interface_out}} -o {{interface_in}} -m state --state RELATED,ESTABLISHED -j ACCEPT
+      - -A FORWARD -i {{interface_in}} -o {{interface_out}} -j ACCEPT
+    when: allow_connection
 
   - name: Set hostapd and isc-dhcp-server to start in boot
     command: update-rc.d {{item}} enable
@@ -101,6 +102,7 @@
 
   - name: Backup the NAT configuration
     command: sh -c "iptables-save > /etc/iptables.ipv4.nat"
+    when: allow_connection
 
   - name: Reboot
     command: /sbin/shutdown -r +1
